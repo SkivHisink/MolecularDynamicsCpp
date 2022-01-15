@@ -16,6 +16,10 @@ public:
 	{
 		return x;
 	}
+	double get_const_X() const
+	{
+		return x;
+	}
 	double set_X(double& val)
 	{
 		x = val;
@@ -24,11 +28,19 @@ public:
 	{
 		return y;
 	}
+	double get_const_Y() const
+	{
+		return y;
+	}
 	double set_Y(double& val)
 	{
 		y = val;
 	}
 	double get_Z()
+	{
+		return z;
+	}
+	double get_const_Z() const
 	{
 		return z;
 	}
@@ -63,7 +75,7 @@ public:
 	Vector3 normalized() const
 	{
 		double norm_val = this->magnitude();
-		norm_val =1./ norm_val;
+		norm_val = 1. / norm_val;
 		return Vector3(this->x * norm_val, this->y * norm_val, this->z * norm_val);
 	}
 	static Vector3 right()
@@ -94,8 +106,14 @@ public:
 	{
 		return Vector3(0., 0., 0.);
 	}
+
 };
 
+std::ostream& operator<< (std::ostream& out, const Vector3& point)
+{
+	out << point.get_const_X() << " " << point.get_const_Y() << " " << point.get_const_Z();
+	return out;
+}
 
 class MySphere
 {
@@ -160,6 +178,7 @@ class MSDSolver final
 	std::vector<double> potentialEnergy;
 	std::vector<double> speed; //DEBUG!
 	double deltaMax = 0.;
+	std::ofstream coord;
 	void ObjectCreating()
 	{
 		for (int i = 0; i < XObjectNumber; ++i)
@@ -170,8 +189,6 @@ class MSDSolver final
 				ObjectsArray[i][j] = new PhysObject * [ZObjectNumber];
 			}
 		}
-		int pos = 0;
-		int pos_2 = 0;
 		for (int i = 0; i < XObjectNumber; ++i)
 		{
 			for (int j = 0; j < YObjectNumber; ++j)
@@ -237,6 +254,8 @@ class MSDSolver final
 public:
 	void Start()
 	{
+		coord.open("coord.csv");
+		coord << XObjectNumber << " " << YObjectNumber << " " << ZObjectNumber << std::endl;
 		population = XObjectNumber * YObjectNumber * ZObjectNumber;
 		//create objects
 		ObjectCreating();
@@ -251,9 +270,11 @@ public:
 
 	void Solve(double delta, double endTime)
 	{
+		coord << endTime / delta << std::endl;
 		double beginTime = 0.;
 		int counter = 0;
-		while (beginTime < endTime) {
+		while (beginTime < endTime)
+		{
 			for (int i = 0; i < XObjectNumber - 1; ++i)
 			{
 				for (int j = 0; j < YObjectNumber; ++j)
@@ -263,7 +284,7 @@ public:
 						auto obj = ObjectsArray[i][j][k];
 						obj->obj_->Speed += obj->obj_->Force * (delta / Mass);
 						Ke += pow(obj->obj_->Speed.magnitude(), 2) * Mass * 0.5;
-						auto t = obj->obj_->Speed * delta; // x = v * t
+						auto t = obj->obj_->Speed * delta;
 						obj->obj_->location += t;
 						matrices[i * YObjectNumber * ZObjectNumber + j * ZObjectNumber + k] = obj->obj_->location;
 					}
@@ -289,17 +310,17 @@ public:
 							double x = diff.magnitude() - XObjectStep;
 							obj->obj_->Force += diff.normalized() * K * x;
 							Pe += pow(x, 2) * 0.5 * K;
-							if (deltaMax < x) deltaMax = x;
+							if (deltaMax > x)
+							{
+								deltaMax = x;
+							}
 						}
-
 						if (obj->left != nullptr)
 						{
 							auto diff = obj->left->location - obj->obj_->location;
 							double x = diff.magnitude() - XObjectStep;
 							obj->obj_->Force += diff.normalized() * K * x;
-							//Pe += pow(x, 2) * 0.5 * K;
 						}
-
 						if (obj->front != nullptr)
 						{
 							auto diff = obj->front->location - obj->obj_->location;
@@ -307,15 +328,12 @@ public:
 							obj->obj_->Force += diff.normalized() * K * y;
 							Pe += pow(y, 2) * 0.5 * K;
 						}
-
 						if (obj->back != nullptr)
 						{
 							auto diff = obj->back->location - obj->obj_->location;
 							double y = diff.magnitude() - YObjectStep;
 							obj->obj_->Force += diff.normalized() * K * y;
-							//Pe += pow(y, 2) * 0.5 * K;
 						}
-
 						if (obj->up != nullptr)
 						{
 							auto diff = obj->up->location - obj->obj_->location;
@@ -328,7 +346,6 @@ public:
 							auto diff = obj->down->location - obj->obj_->location;
 							double z = diff.magnitude() - ZObjectStep;
 							obj->obj_->Force += diff.normalized() * K * z;
-							//Pe += pow(z, 2) * 0.5 * K;
 						}
 					}
 				}
@@ -336,19 +353,38 @@ public:
 				Ke_Summ += Ke;
 				Pe = Ke = 0.;
 			}
-			if (abs(beginTime - counter * 0.1) < delta * 0.1) {
+
+			if (abs(beginTime - counter * 0.1) < 0.1)
+			{
 				if (counter != 0)
 				{
-					keneticEnergy.push_back(Ke_Summ * delta / 0.1);
-					potentialEnergy.push_back(Pe_Summ * delta / 0.1);
+					keneticEnergy.push_back(Ke_Summ);
+					potentialEnergy.push_back(Pe_Summ);
 				}
 				Ke_Summ = 0;
 				Pe_Summ = 0;
 				++counter;
+				SaveCoordinates();
 			}
 			beginTime += delta;
 		}
 	}
+
+	void SaveCoordinates()
+	{
+		for (int i = 0; i < XObjectNumber; ++i)
+		{
+			for (int j = 0; j < YObjectNumber; ++j)
+			{
+				for (int k = 0; k < ZObjectNumber; ++k)
+				{
+					coord << ObjectsArray[i][j][k]->obj_->location << std::endl;
+				}
+			}
+		}
+		coord << std::endl;
+	}
+
 	void SaveData()
 	{
 		std::ofstream file;
@@ -367,6 +403,7 @@ public:
 		}
 		file.close();
 	}
+
 	~MSDSolver()
 	{
 		for (int i = 0; i < XObjectNumber; ++i)
@@ -382,16 +419,17 @@ public:
 			delete[] ObjectsArray[i];
 		}
 		delete[] matrices;
+		coord.close();
 	}
 };
 
 int main(void)
 {
-	if(false)
+	if (true)
 	{
 		MSDSolver solver;
 		solver.Start();
-		solver.Solve(0.001, 10);
+		solver.Solve(0.01, 10);
 		solver.SaveData();
 	}
 	return _CrtDumpMemoryLeaks();
