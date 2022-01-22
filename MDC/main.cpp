@@ -115,7 +115,7 @@ std::ostream& operator<< (std::ostream& out, const Vector3& point)
 	return out;
 }
 
-class MySphere
+class MySphere final
 {
 public:
 	Vector3 Force;
@@ -130,7 +130,7 @@ public:
 	}
 };
 
-class PhysObject
+class PhysObject final
 {
 public:
 	MySphere* obj_;
@@ -210,8 +210,6 @@ class MSDSolver final
 			for (int k = 0; k < ZObjectNumber; ++k)
 			{
 				ObjectsArray[0][j][k]->obj_->Force = Vector3::right() * 50;
-				//ObjectsArray[1][0][0].obj_.Force = Vector3.right * 100;
-				//ObjectsArray[0][0][1].obj_.Force = Vector3.right * 1;
 			}
 	}
 
@@ -254,8 +252,8 @@ class MSDSolver final
 public:
 	void Start()
 	{
-		coord.open("coord.csv");
-		coord << XObjectNumber << " " << YObjectNumber << " " << ZObjectNumber << std::endl;
+		coord.open("coord.csv"); // открываем файл для отрисовки
+		coord << XObjectNumber << " " << YObjectNumber << " " << ZObjectNumber << std::endl; // записываем максимально возможное кол-во объектов
 		population = XObjectNumber * YObjectNumber * ZObjectNumber;
 		//create objects
 		ObjectCreating();
@@ -270,10 +268,9 @@ public:
 
 	void Solve(double delta, double endTime)
 	{
-		coord << endTime / delta << std::endl;
-		double beginTime = 0.;
+		coord << endTime / delta << std::endl; // записываем количество шагов, которые мы записываем
 		int counter = 0;
-		while (beginTime < endTime)
+		for (double beginTime = 0.; beginTime < endTime; beginTime += delta)
 		{
 			for (int i = 0; i < XObjectNumber - 1; ++i)
 			{
@@ -366,7 +363,6 @@ public:
 				++counter;
 				SaveCoordinates();
 			}
-			beginTime += delta;
 		}
 	}
 
@@ -429,7 +425,7 @@ int main(void)
 	{
 		MSDSolver solver;
 		solver.Start();
-		solver.Solve(0.01, 10);
+		solver.Solve(0.0001, 10);
 		solver.SaveData();
 	}
 	return _CrtDumpMemoryLeaks();
